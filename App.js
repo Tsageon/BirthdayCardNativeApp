@@ -1,10 +1,22 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, Button, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TextInput, Button, Share, Image, TouchableOpacity, ScrollView } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Picker } from '@react-native-picker/picker';
 import { useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { ImageBackground } from 'react-native';
+import Img1 from './assets/ai-generated-8511709_1280.png';
+import Img2 from './assets/balloons-298144_1280.png';
+import Img3 from './assets/blank-paper-with-gift-box-table.jpg';
+import Img4 from './assets/happy-birthday-5042779_1280.jpg';
+import Img5 from './assets/white-birthday-invitation-mock-up-with-pinkish-supplies.jpg';
+import Img6 from './assets/360_F_217641566_AWmON9z2iOimut3I859nKuqyHycc3oO4.jpg'
+import Img7 from './assets/510719-blue-and-gold-happy-birthday-background-image.jpg';
+import Img8 from './assets/blank-paper-with-gift-box-table.jpg';
 import * as ImagePicker from 'expo-image-picker';
-import { ScrollView } from 'react-native';
+import { captureScreen } from 'react-native-view-shot';
+
+const templates = [Img1, Img2, Img3, Img4, Img5,Img6,Img7,Img8];
 
 export default function App() {
   const [cardText, setCardText] = useState('');
@@ -14,9 +26,48 @@ export default function App() {
   const [textColor, setTextColor] = useState('#000080');
   const [fontStyle, setFontStyle] = useState('normal');
   const [borderStyle, setBorderStyle] = useState('none');
-  const [borderColor, setBorderColor] = useState('#FFD700');
+  const [borderColor, setBorderColor] = useState('none');
   const [imageSize, setImageSize] = useState(200);
   const [cardBackgroundColor, setCardBackgroundColor] = useState('#ADD8E6');
+
+  const shareData = async () => {
+    try {
+      if (navigator.share) {
+        const shareContent = {
+          title: 'Check out this content!',
+          text: `Text: ${cardText}`,
+          url: image || '',  
+        };
+        await navigator.share(shareContent);
+        alert('Content shared!');
+      } else {
+        alert('Web sharing is not supported in your browser');
+      }
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+  
+
+  const saveCard = async () => {
+    try {
+      const base64Uri = await captureScreen({
+        format: 'jpg',
+        quality: 1,
+      });
+  
+      console.log('Base64 Card saved:', base64Uri);
+  
+      const a = document.createElement('a');
+      a.href = base64Uri;
+      a.download = 'card.jpg';
+      a.click();
+  
+      alert('Card saved as base64! Good luck finding it.');
+    } catch (error) {
+      console.error('Error saving card:', error);
+    }
+  };
 
   const handleAddText = () => {
     setCardText(inputText);
@@ -24,8 +75,14 @@ export default function App() {
   };
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission to access the camera roll is required. Please enable it.');
+      return;
+    }
+
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -36,9 +93,23 @@ export default function App() {
     }
   };
 
+  const handleSelectTemplate = (template) => {
+    console.log('Template selected:', template);
+    setImage(template);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Custom Birthday Card Maker V2</Text>
+
+      <Text style={styles.subtitle}>Choose a Template</Text>
+      <View style={styles.templateContainer}>
+        {templates.map((template, index) => (
+          <TouchableOpacity key={index} onPress={() => handleSelectTemplate(template)}>
+            <Image source={template} style={styles.templateImage} />
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <View
         style={[
@@ -50,13 +121,28 @@ export default function App() {
           },
         ]}
       >
-        <Text style={[styles.cardText, { fontSize: textSize, color: textColor, fontStyle: fontStyle }]}>{cardText}</Text>
-        <Button title="Pick an image from your device" onPress={pickImage} />
-        {image && (
-          <Image
-            source={{ uri: image }}
-            style={{ width: imageSize, height: imageSize, borderRadius: 10, marginTop: 10 }}
-          />
+        {image ? (
+        <ImageBackground
+        source={image}
+        style={[styles.imageBackground, { height: 500, width: 300 }]}
+        imageStyle={{ resizeMode: 'cover' }}
+      >
+        <LinearGradient
+          colors={['rgba(0, 0, 0, 0.6)', 'transparent']}
+          style={styles.overlay}
+        >
+          <Text style={[styles.cardText, { fontSize: textSize, color: textColor, fontStyle: fontStyle }]}>
+            {cardText}
+          </Text>
+        </LinearGradient>
+      </ImageBackground>
+      
+        ) : (
+          <Text
+            style={[styles.cardText, { fontSize: textSize, color: textColor, fontStyle: fontStyle }]}
+          >
+            {cardText}
+          </Text>
         )}
       </View>
 
@@ -161,63 +247,108 @@ export default function App() {
       )}
 
       <StatusBar style="auto" />
+      <View style={styles.buttonContainer}>
+        <Button title="Share Card" onPress={shareData} />
+        <Button title="Save Card" onPress={saveCard} />
+      </View>
+
+      <TouchableOpacity style={styles.pickImageButton} onPress={pickImage}>
+        <Text style={styles.buttonText}>Pick an Image from Library</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
+    flexGrow: 1,
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+    paddingTop: 30,
+    paddingHorizontal: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  subtitle: {
+    fontSize: 18,
+    marginVertical: 10,
+  },
+  templateContainer: {
+    flexDirection: 'row',
     marginBottom: 20,
   },
+  templateImage: {
+    width: 60,
+    height: 60,
+    marginHorizontal: 5,
+    borderRadius: 5,
+  },
   card: {
-    width: '100%',
-    height: 300,
-    alignItems: 'center',
+    width: 300,
+    height: 400,
     justifyContent: 'center',
-    marginBottom: 20,
+    alignItems: 'center',
+    marginVertical: 20,
     borderRadius: 10,
-    padding: 10,
+    overflow: 'hidden',
+  },
+  imageBackground: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,  
+    backgroundColor: '#ddd', 
   },
   cardText: {
     textAlign: 'center',
-    marginBottom: 10,
+    margin: 10,
+    fontWeight: 'bold',
   },
   input: {
-    width: '100%',
-    padding: 10,
-    borderColor: 'gray',
+    height: 40,
+    borderColor: '#000',
     borderWidth: 1,
-    borderRadius: 10,
     marginBottom: 10,
-    textAlign: 'center',
-  },
-  picker: {
-    height: 50,
-    width: 200,
-    backgroundColor: '#fff',
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
+    width: 250,
     paddingLeft: 10,
-    paddingRight: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
   },
   label: {
     fontSize: 16,
-    marginBottom: 5,
     marginTop: 10,
   },
+  picker: {
+    width: 200,
+    height: 40,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: 250,
+    marginTop: 30,
+  },
+  pickImageButton: {
+    backgroundColor: '#007BFF',
+    padding: 10,
+    marginTop: 10,
+    borderRadius: 5,
+  },
+  buttonText: {
+    color: '#fff',
+    textAlign: 'center',
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,  
+  }
+  
 });
